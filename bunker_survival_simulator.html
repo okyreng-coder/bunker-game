@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>УБЕЖИЩЕ-101 // Bunker Survival Simulator</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap');
+
+        :root {
+            --crt-green: #33ff33;
+            --crt-green-dim: #1a881a;
+            --crt-bg: #050d05;
+            --crt-amber: #ffb000;
+            --crt-red: #ff3333;
+        }
+
+        body {
+            background-color: #020602;
+            color: var(--crt-green);
+            font-family: 'Share Tech Mono', monospace;
+            overflow-x: hidden;
+            user-select: none;
+        }
+
+        .font-vt323 {
+            font-family: 'VT323', monospace;
+        }
+
+        /* CRT Screen Effects */
+        .crt-container {
+            position: relative;
+            background-color: var(--crt-bg);
+            border: 4px solid #1a3a1a;
+            box-shadow: 0 0 20px rgba(51, 255, 51, 0.2), inset 0 0 30px rgba(0, 0, 0, 0.8);
+        }
+
+        .crt-container::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 40;
+            background-size: 100% 3px, 6px 100%;
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        /* CRT Scanline & Glow */
+        .crt-glow {
+            text-shadow: 0 0 5px rgba(51, 255, 51, 0.7), 0 0 10px rgba(51, 255, 51, 0.4);
+        }
+
+        .amber-glow {
+            color: var(--crt-amber);
+            text-shadow: 0 0 5px rgba(255, 176, 0, 0.7), 0 0 10px rgba(255, 176, 0, 0.4);
+        }
+
+        .red-glow {
+            color: var(--crt-red);
+            text-shadow: 0 0 5px rgba(255, 51, 51, 0.7), 0 0 10px rgba(255, 51, 51, 0.4);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #050d05;
+            border-left: 1px solid var(--crt-green-dim);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--crt-green-dim);
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--crt-green);
+        }
+
+        /* Terminal Button Styling */
+        .term-btn {
+            background-color: rgba(51, 255, 51, 0.05);
+            border: 1px solid var(--crt-green);
+            color: var(--crt-green);
+            transition: all 0.15s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .term-btn:hover:not(:disabled) {
+            background-color: var(--crt-green);
+            color: #000;
+            box-shadow: 0 0 12px rgba(51, 255, 51, 0.8);
+            font-weight: bold;
+        }
+
+        .term-btn:active:not(:disabled) {
+            transform: scale(0.98);
+        }
+
+        .term-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            border-color: #1a441a;
+        }
+
+        .term-btn-amber {
+            border-color: var(--crt-amber);
+            color: var(--crt-amber);
+        }
+        .term-btn-amber:hover:not(:disabled) {
+            background-color: var(--crt-amber);
+            color: #000;
+            box-shadow: 0 0 12px rgba(255, 176, 0, 0.8);
+        }
+
+        .term-btn-red {
+            border-color: var(--crt-red);
+            color: var(--crt-red);
+        }
+        .term-btn-red:hover:not(:disabled) {
+            background-color: var(--crt-red);
+            color: #000;
+            box-shadow: 0 0 12px rgba(255, 51, 51, 0.8);
+        }
+
+        /* Screen Flicker */
+        @keyframes flicker {
+            0% { opacity: 0.97; }
+            50% { opacity: 1; }
+            52% { opacity: 0.92; }
+            54% { opacity: 1; }
+            80% { opacity: 0.96; }
+            100% { opacity: 0.98; }
+        }
+
+        .crt-flicker {
+            animation: flicker 0.15s infinite;
+        }
+
+        /* Progress Bar Styling */
+        .bar-container {
+            border: 1px solid var(--crt-green);
+            background: rgba(0,0,0,0.5);
+            height: 16px;
+            padding: 2px;
+        }
+        .bar-fill {
+            height: 100%;
+            background-color: var(--crt-green);
+            box-shadow: 0 0 8px var(--crt-green);
+            transition: width 0.3s ease;
+        }
+        .bar-fill-amber {
+            background-color: var(--crt-amber);
+            box-shadow: 0 0 8px var(--crt-amber);
+        }
+        .bar-fill-red {
+            background-color: var(--crt-red);
+            box-shadow: 0 0 8px var(--crt-red);
+        }
+
+        /* Scanline Anim */
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(1000%); }
+        }
+        .moving-scanline {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 10px;
+            background: linear-gradient(to bottom, transparent, rgba(51, 255, 51, 0.15), transparent);
+            animation: scanline 8s linear infinite;
+            pointer-events: none;
+            z-index: 39;
+        }
+    </style>
+</head>
+<body class="p-2 md:p-6 min-h-screen flex flex-col justify-between">
+
+    <!-- Header Terminal Title -->
+    <header class="max-w-6xl w-full mx-auto mb-4 flex justify-between items-center border-b border-green-800 pb-2">
+        <div class="flex items-center space-x-3">
+            <i data-lucide="shield-alert" class="w-8 h-8 text-green-500 animate-pulse"></i>
+            <div>
+                <h1 class="text-2xl md:text-3xl font-vt323 tracking-wider crt-glow">ОС-БУНКЕР v4.05 // УБЕЖИЩЕ-101</h1>
+                <p class="text-xs text-green-700">АВТОНОМНЫЙ ПРОТОКОЛ ВЫЖИВАНИЯ СИСТЕМЫ</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-2">
+            <button id="soundToggle" onclick="toggleSound()" class="p-2 border border-green-800 hover:border-green-400 text-xs flex items-center gap-1">
+                <i data-lucide="volume-2" id="soundIcon" class="w-4 h-4"></i>
+                <span id="soundText" class="hidden md:inline">ЗВУК: ВКЛ</span>
+            </button>
+            <button onclick="resetGamePrompt()" class="p-2 border border-red-900 hover:border-red-500 text-red-500 text-xs flex items-center gap-1">
+                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                <span class="hidden md:inline">СБРОС</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Game Terminal Viewport -->
+    <main class="max-w-6xl w-full mx-auto crt-container rounded-lg p-4 md:p-6 flex-1 flex flex-col justify-between relative crt-flicker">
+        <div class="moving-scanline"></div>
+
+        <!-- NEW GAME SETUP / CHARACTER SELECTION SCREEN -->
+        <div id="startScreen" class="space-y-6">
+            <div class="border-b border-green-800 pb-3">
+                <h2 class="text-2xl font-vt323 crt-glow">>>> ИНИЦИАЛИЗАЦИЯ ПРОТОКОЛА ВЫЖИВАНИЯ</h2>
+                <p class="text-sm text-green-400 mt-1">Катастрофа на поверхности произошла 36 часов назад. Системы бункера активированы. Выберите первого смотрителя бункера или сгенерируйте случайный профиль.</p>
+            </div>
+
+            <!-- Character Generator Box -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Character Details Card -->
+                <div class="border border-green-800 p-4 bg-green-950/20 rounded relative">
+                    <div class="absolute top-2 right-2 text-xs border border-green-700 px-2 py-0.5 rounded" id="charIdTag">ID: #8841-A</div>
+                    <h3 class="text-lg font-bold border-b border-green-900 pb-1 mb-3 text-green-300 flex items-center gap-2">
+                        <i data-lucide="user" class="w-5 h-5"></i> ЛИЧНОЕ ДЕЛО ВЫЖИВШЕГО
+                    </h3>
+
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between"><span class="text-green-600">Профессия:</span> <span id="charRole" class="font-bold text-green-300">Бизнес-аналитик</span></div>
+                        <div class="flex justify-between"><span class="text-green-600">Возраст / Пол:</span> <span id="charAgeSex" class="text-green-300">34 года, Мужской</span></div>
+                        <div class="flex justify-between"><span class="text-green-600">Здоровье:</span> <span id="charHealth" class="text-green-300">Отличное (100%)</span></div>
+                        <div class="flex justify-between"><span class="text-green-600">Психика:</span> <span id="charSanity" class="text-green-300">Стабильная</span></div>
+                        <div class="flex justify-between"><span class="text-green-600">Навык:</span> <span id="charSkill" class="text-green-300">Оптимизация запасов</span></div>
+                        <div class="flex justify-between"><span class="text-green-600">Предмет багажа:</span> <span id="charItem" class="text-amber-400">Планшет с графиками</span></div>
+                        <div class="mt-3 pt-2 border-t border-green-900/60">
+                            <span class="text-green-600 block text-xs mb-1">Фактурная особенность / Черта:</span>
+                            <p id="charTrait" class="text-xs italic text-green-400">«Умеет экономно распределять провизию в критических ситуациях.»</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Game Rules Summary / Intro -->
+                <div class="border border-green-800 p-4 bg-green-950/20 rounded flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-lg font-bold border-b border-green-900 pb-1 mb-3 text-green-300 flex items-center gap-2">
+                            <i data-lucide="terminal" class="w-5 h-5"></i> ПРАВИЛА ВЫЖИВАНИЯ
+                        </h3>
+                        <ul class="text-xs space-y-2 text-green-400 list-disc list-inside">
+                            <li>Каждый день расходуется **Еда** и **Вода** для выживших.</li>
+                            <li>Генераторы требуют **Энергию**, а **Воздушные фильтры** изнашиваются.</li>
+                            <li>Уникальные **профессии** дают скрытые бонусы в событиях и вылазках.</li>
+                            <li>Отправляйте людей на **Вылазки** в пустошь за припасами, но берегите здоровье.</li>
+                            <li>Цель: Выжить 20 дней до прибытия спасателей!</li>
+                        </ul>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-t border-green-900 flex flex-col gap-2">
+                        <button onclick="generateRandomCharacter()" class="term-btn p-2.5 text-sm flex items-center justify-center gap-2">
+                            <i data-lucide="dice-5" class="w-4 h-4"></i> СГЕНЕРИРОВАТЬ ДРУГОГО ПЕРСОНАЖА
+                        </button>
+                        <button onclick="startGame()" class="term-btn amber-glow term-btn-amber p-3 font-bold text-base flex items-center justify-center gap-2">
+                            <i data-lucide="power" class="w-5 h-5"></i> ЗАПУСТИТЬ СИСТЕМЫ БУНКЕРА
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN GAMEPLAY DASHBOARD (HIDDEN AT START) -->
+        <div id="gameScreen" class="hidden flex-1 flex flex-col space-y-4">
+
+            <!-- Top Dashboard Stats Bar -->
+            <div class="grid grid-cols-2 md:grid-cols-6 gap-2 border border-green-800 p-2 bg-black/40 text-xs">
+                <!-- Day Counter -->
+                <div class="border border-green-900 p-2 rounded text-center">
+                    <span class="text-green-600 block text-[10px]">ДЕНЬ ВЫЖИВАНИЯ</span>
+                    <span id="statDay" class="text-xl font-vt323 font-bold crt-glow">1</span>
+                </div>
+                <!-- Food -->
+                <div class="border border-green-900 p-2 rounded">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-green-600 text-[10px] flex items-center gap-1"><i data-lucide="apple" class="w-3 h-3"></i> ЕДА</span>
+                        <span id="statFoodVal" class="text-xs font-bold">15/25</span>
+                    </div>
+                    <div class="bar-container"><div id="barFood" class="bar-fill" style="width: 60%;"></div></div>
+                </div>
+                <!-- Water -->
+                <div class="border border-green-900 p-2 rounded">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-green-600 text-[10px] flex items-center gap-1"><i data-lucide="droplet" class="w-3 h-3"></i> ВОДА</span>
+                        <span id="statWaterVal" class="text-xs font-bold">15/25</span>
+                    </div>
+                    <div class="bar-container"><div id="barWater" class="bar-fill" style="width: 60%;"></div></div>
+                </div>
+                <!-- Energy -->
+                <div class="border border-green-900 p-2 rounded">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-green-600 text-[10px] flex items-center gap-1"><i data-lucide="zap" class="w-3 h-3"></i> ТОПЛИВО</span>
+                        <span id="statEnergyVal" class="text-xs font-bold">80%</span>
+                    </div>
+                    <div class="bar-container"><div id="barEnergy" class="bar-fill bar-fill-amber" style="width: 80%;"></div></div>
+                </div>
+                <!-- Air Filters -->
+                <div class="border border-green-900 p-2 rounded">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-green-600 text-[10px] flex items-center gap-1"><i data-lucide="wind" class="w-3 h-3"></i> ФИЛЬТРЫ</span>
+                        <span id="statFilterVal" class="text-xs font-bold">90%</span>
+                    </div>
+                    <div class="bar-container"><div id="barFilters" class="bar-fill" style="width: 90%;"></div></div>
+                </div>
+                <!-- Morale -->
+                <div class="border border-green-900 p-2 rounded">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-green-600 text-[10px] flex items-center gap-1"><i data-lucide="smile" class="w-3 h-3"></i> МОРАЛЬ</span>
+                        <span id="statMoraleVal" class="text-xs font-bold">70%</span>
+                    </div>
+                    <div class="bar-container"><div id="barMorale" class="bar-fill" style="width: 70%;"></div></div>
+                </div>
+            </div>
+
+            <!-- Middle Split Layout: Event Console (Left) + Management Tabs (Right) -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1">
+                
+                <!-- Left Terminal Log & Event Panel (7 Columns) -->
+                <div class="lg:col-span-7 border border-green-800 p-3 bg-black/60 rounded flex flex-col justify-between">
+                    <div>
+                        <!-- Event Header -->
+                        <div class="flex justify-between items-center border-b border-green-800 pb-2 mb-3">
+                            <span class="text-xs font-bold tracking-widest text-green-400 flex items-center gap-1">
+                                <i data-lucide="radio" class="w-4 h-4 animate-pulse"></i> СВОДКА ДНЯ И ПРОИСШЕСТВИЯ
+                            </span>
+                            <span id="eventAlertLevel" class="text-[10px] px-2 py-0.5 border border-green-600 rounded">СТАТУС: НОРМА</span>
+                        </div>
+
+                        <!-- Typewriter Text Output Console -->
+                        <div class="min-h-[140px] md:min-h-[180px] bg-green-950/10 p-3 border border-green-900/50 rounded text-sm text-green-300 font-mono overflow-y-auto max-h-[220px]" id="eventTextConsole">
+                            <p id="typewriterText">Загрузка данных дневного журнала...</p>
+                        </div>
+                    </div>
+
+                    <!-- Choice Action Buttons Container -->
+                    <div class="mt-4 space-y-2" id="eventChoicesContainer">
+                        <!-- Dynamic choices generated via JS -->
+                    </div>
+                </div>
+
+                <!-- Right Management Panel (5 Columns) -->
+                <div class="lg:col-span-5 border border-green-800 p-3 bg-black/60 rounded flex flex-col">
+                    
+                    <!-- Tab Navigation Header -->
+                    <div class="flex border-b border-green-800 mb-3 text-xs">
+                        <button onclick="switchTab('survivors')" id="tabBtn-survivors" class="px-3 py-1.5 border-b-2 border-green-400 text-green-300 font-bold flex-1 text-center">ЖИТЕЛИ</button>
+                        <button onclick="switchTab('inventory')" id="tabBtn-inventory" class="px-3 py-1.5 text-green-600 hover:text-green-400 flex-1 text-center">СКЛАД</button>
+                        <button onclick="switchTab('expedition')" id="tabBtn-expedition" class="px-3 py-1.5 text-green-600 hover:text-green-400 flex-1 text-center">ВЫЛАЗКА</button>
+                    </div>
+
+                    <!-- TAB 1: SURVIVORS & ASSIGNMENTS -->
+                    <div id="tab-survivors" class="space-y-3 flex-1 overflow-y-auto max-h-[300px] pr-1">
+                        <p class="text-[11px] text-green-600 mb-1">Назначьте задачи выжившим на сегодня:</p>
+                        <div id="survivorsList" class="space-y-2">
+                            <!-- Populated via JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- TAB 2: INVENTORY / STORAGE -->
+                    <div id="tab-inventory" class="hidden space-y-3 flex-1 overflow-y-auto max-h-[300px] pr-1">
+                        <div class="grid grid-cols-2 gap-2 text-xs" id="inventoryGrid">
+                            <!-- Items populated via JS -->
+                        </div>
+                    </div>
+
+                    <!-- TAB 3: WASTELAND EXPEDITIONS -->
+                    <div id="tab-expedition" class="hidden space-y-3 flex-1 flex flex-col justify-between">
+                        <div>
+                            <h4 class="text-xs font-bold text-amber-400 border-b border-green-900 pb-1 mb-2 flex items-center gap-1">
+                                <i data-lucide="compass" class="w-4 h-4"></i> ЭКСПЕДИЦИЯ В ПУСТОШИ
+                            </h4>
+                            <p class="text-xs text-green-400 mb-3">Отправьте одного выжившего на поиски ресурсов. Чем выше риск, тем более ценные детали и медикаменты можно найти.</p>
+
+                            <div class="space-y-2 text-xs">
+                                <div>
+                                    <label class="text-green-600 block mb-1">Выберите исследуемую зону:</label>
+                                    <select id="expeditionLocation" class="w-full bg-black border border-green-800 p-1.5 text-green-300 text-xs focus:outline-none focus:border-green-400">
+                                        <option value="ruins">Разрушенные жилые дома (Низкий риск / Еда и Вода)</option>
+                                        <option value="pharmacy">Заброшенная аптека (Средний риск / Медикаменты)</option>
+                                        <option value="factory">Старый завод (Высокий риск / Запчасти и Фильтры)</option>
+                                        <option value="bunker">Затопленный военный бункер (Смертельный риск / Редкий лут)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-green-600 block mb-1">Выберите участника вылазки:</label>
+                                    <select id="expeditionScout" class="w-full bg-black border border-green-800 p-1.5 text-green-300 text-xs focus:outline-none focus:border-green-400">
+                                        <!-- Options added dynamically -->
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button onclick="startExpedition()" id="startExpBtn" class="term-btn term-btn-amber p-2 text-xs w-full mt-3 font-bold flex items-center justify-center gap-1">
+                            <i data-lucide="footprints" class="w-4 h-4"></i> ОТПРАВИТЬ ЭКСПЕДИЦИЮ
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Bottom Control Panel: End Day Button -->
+            <div class="border-t border-green-800 pt-3 flex flex-col sm:flex-row justify-between items-center gap-2">
+                <div class="text-xs text-green-600 flex items-center gap-2">
+                    <span class="inline-block w-2 h-2 rounded-full bg-green-500 animate-ping"></span>
+                    СИСТЕМА ЖИЗНЕОБЕСПЕЧЕНИЯ ФУНКЦИОНИРУЕТ
+                </div>
+                <button onclick="advanceDay()" id="nextDayBtn" class="term-btn term-btn-amber px-6 py-2.5 text-sm font-bold flex items-center gap-2 w-full sm:w-auto justify-center">
+                    <span>ЗАВЕРШИТЬ ДЕНЬ И ПЕРЕЙТИ К СЛЕДУЮЩЕМУ</span>
+                    <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+        </div>
+
+        <!-- END GAME / OVERLAY SCREEN (HIDDEN) -->
+        <div id="endGameScreen" class="hidden absolute inset-0 bg-black/95 z-50 p-6 flex flex-col justify-center items-center text-center space-y-4">
+            <i id="endIcon" data-lucide="skull" class="w-16 h-16 text-red-500 animate-bounce"></i>
+            <h2 id="endTitle" class="text-3xl font-vt323 font-bold text-red-500 red-glow">СИГНАЛ ПОТЕРЯН // БУНКЕР ПАЛ</h2>
+            <p id="endDescription" class="text-sm max-w-md text-green-300 font-mono">Все жители гибли от голода и нехватки кислорода. Протокол закрыт.</p>
+            <div class="p-3 border border-green-800 bg-green-950/30 text-xs text-green-400 rounded">
+                Вы продержались: <span id="endDaysCount" class="font-bold text-amber-400">0</span> дней.
+            </div>
+            <button onclick="resetGame()" class="term-btn amber-glow term-btn-amber px-6 py-3 font-bold text-sm flex items-center gap-2">
+                <i data-lucide="rotate-ccw" class="w-4 h-4"></i> НАЧАТЬ НОВУЮ СЕССИЮ
+            </button>
+        </div>
+
+    </main>
+
+    <!-- Footer System Status -->
+    <footer class="max-w-6xl w-full mx-auto mt-2 flex justify-between items-center text-[11px] text-green-800">
+        <div>ОБОРУДОВАНИЕ: ИНТЕКТ-101 // ТЕРМИНАЛ #09</div>
+        <div id="saveStatus">АВТОСОХРАНЕНИЕ: АКТИВНО</div>
+    </footer>
+
+    <!-- Game Logic & Scripts -->
+    <script>
+        /* === GAME STATE & CONFIGURATION === */
+        // Расширенный список профессий с деталями
+        const PROFILES = [
+            { role: 'Бизнес-аналитик', skill: 'Оптимизация запасов', item: 'Планшет с аналитикой', trait: 'Снижает расход провизии при кризисе.' },
+            { role: 'Врач', skill: 'Хирургия и терапия', item: 'Компактная аптечка', trait: 'Эффективно лечит ранения и болезни.' },
+            { role: 'Полицейский', skill: 'Огневая подготовка', item: 'Служебный пистолет', trait: 'Защищает бункер при нападениях бандитов.' },
+            { role: 'Учитель', skill: 'Психологическая поддержка', item: 'Книга «Этика и жизнь»', trait: 'Поддерживает высокую мораль в группе.' },
+            { role: 'Дефектолог', skill: 'Социальная адаптация', item: 'Методические карты', trait: 'Предотвращает нервные срывы и конфликты.' },
+            { role: 'Адвокат', skill: 'Переговоры и убеждение', item: 'Кодекс законов', trait: 'Решает споры мирным путем без потери морали.' },
+            { role: 'Юрист', skill: 'Правовой анализ', item: 'Папка с контрактами', trait: 'Находит выгоду при обмене с торговцами.' },
+            { role: 'Бариста', skill: 'Приготовление бодрящих напитков', item: 'Портативный аэропресс', trait: 'Повышает работоспособность выживших.' },
+            { role: 'Автомеханик', skill: 'Ремонт генераторов', item: 'Набор ключей и головок', trait: 'Чинит сложную технику и вентиляцию.' },
+            { role: 'SEO-специалист', skill: 'Анализ радиочастот', item: 'Мощная антенна', trait: 'Улавливает слабые сигналы спасателей.' },
+            { role: 'Биотехнолог', skill: 'Биофильтрация и синтез', item: 'Тест-полоски воды', trait: 'Помогает очищать воду и чинить фильтры.' },
+            { role: 'Биоинформатик', skill: 'Анализ датчиков и данных', item: 'Защищенный ноутбук', trait: 'Прогнозирует поломки до их возникновения.' },
+            { role: 'Тренер', skill: 'Физическая выносливость', item: 'Эспандер и секундомер', trait: 'Повышает выживаемость в вылазках.' },
+            { role: 'Инженер', skill: 'Электротехника', item: 'Мультиметр и паяльник', trait: 'Быстро восстанавливает энергосеть.' },
+            { role: 'Повар', skill: 'Кулинарная экономия', item: 'Походный котелок', trait: 'Готовит сытные блюда из любых припасов.' },
+            { role: 'Ученый', skill: 'Исследования', item: 'Дозиметр радиации', trait: 'Заранее предупреждает об опасных зонах.' }
+        ];
+
+        const NAMES = ['Алексей', 'Елена', 'Дмитрий', 'Ольга', 'Михаил', 'Татьяна', 'Игорь', 'Анна', 'Сергей', 'Наталья', 'Виктор', 'Екатерина'];
+        const SURNAMES = ['Иванов(а)', 'Соколов(а)', 'Волков(а)', 'Морозов(а)', 'Петров(а)', 'Ковалев(а)', 'Смирнов(а)', 'Васильев(а)'];
+
+        let gameState = {
+            day: 1,
+            resources: {
+                food: 15,
+                water: 15,
+                energy: 80,
+                filters: 90,
+                morale: 75
+            },
+            survivors: [],
+            inventory: {
+                medkit: 2,
+                spareParts: 3,
+                ammo: 5,
+                airFilterItem: 1
+            },
+            currentEvent: null,
+            soundEnabled: true,
+            isExpeditionActive: false,
+            expeditionScoutId: null
+        };
+
+        // Web Audio API Sound System
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            if (!gameState.soundEnabled) return;
+            initAudio();
+            if (!audioCtx) return;
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'click') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, now);
+                osc.frequency.exponentialRampToValueAtTime(400, now + 0.05);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+                osc.start(now);
+                osc.stop(now + 0.05);
+            } else if (type === 'type') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(200 + Math.random() * 300, now);
+                gain.gain.setValueAtTime(0.03, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+                osc.start(now);
+                osc.stop(now + 0.03);
+            } else if (type === 'alarm') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.linearRampToValueAtTime(800, now + 0.25);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            } else if (type === 'success') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523.25, now);
+                osc.frequency.setValueAtTime(659.25, now + 0.08);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                osc.start(now);
+                osc.stop(now + 0.25);
+            }
+        }
+
+        function toggleSound() {
+            gameState.soundEnabled = !gameState.soundEnabled;
+            document.getElementById('soundText').innerText = gameState.soundEnabled ? 'ЗВУК: ВКЛ' : 'ЗВУК: ВЫКЛ';
+            document.getElementById('soundIcon').setAttribute('data-lucide', gameState.soundEnabled ? 'volume-2' : 'volume-x');
+            lucide.createIcons();
+            if (gameState.soundEnabled) playSound('click');
+        }
+
+        /* === CHARACTER GENERATOR === */
+        let currentTempChar = null;
+
+        function generateRandomCharacter() {
+            playSound('click');
+            const name = NAMES[Math.floor(Math.random() * NAMES.length)];
+            const surname = SURNAMES[Math.floor(Math.random() * SURNAMES.length)];
+            const prof = PROFILES[Math.floor(Math.random() * PROFILES.length)];
+            const age = Math.floor(Math.random() * 35) + 20;
+            const sex = Math.random() > 0.5 ? 'Мужской' : 'Женский';
+            const idTag = 'ID: #' + Math.floor(1000 + Math.random() * 9000) + '-A';
+
+            currentTempChar = {
+                id: Date.now() + Math.random(),
+                name: `${name} ${surname}`,
+                role: prof.role,
+                age: age,
+                sex: sex,
+                health: 100,
+                sanity: 100,
+                skill: prof.skill,
+                item: prof.item,
+                trait: prof.trait,
+                task: 'none'
+            };
+
+            document.getElementById('charIdTag').innerText = idTag;
+            document.getElementById('charRole').innerText = prof.role;
+            document.getElementById('charAgeSex').innerText = `${age} лет, ${sex}`;
+            document.getElementById('charSkill').innerText = prof.skill;
+            document.getElementById('charItem').innerText = prof.item;
+            document.getElementById('charTrait').innerText = `«${prof.trait}»`;
+        }
+
+        /* === GAME INITIALIZATION === */
+        function startGame() {
+            playSound('success');
+            if (!currentTempChar) generateRandomCharacter();
+
+            // Помощник с другой случайной профессией
+            const secondaryProf = PROFILES[(PROFILES.findIndex(p => p.role === currentTempChar.role) + 3) % PROFILES.length];
+            const secondaryChar = {
+                id: Date.now() + 1,
+                name: 'Екатерина Морозова',
+                role: secondaryProf.role,
+                age: 28,
+                sex: 'Женский',
+                health: 95,
+                sanity: 90,
+                skill: secondaryProf.skill,
+                item: secondaryProf.item,
+                trait: secondaryProf.trait,
+                task: 'none'
+            };
+
+            gameState.survivors = [currentTempChar, secondaryChar];
+
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('gameScreen').classList.remove('hidden');
+
+            updateUI();
+            triggerDailyEvent();
+            saveGame();
+        }
+
+        /* === TYPEWRITER EFFECT === */
+        function typeWriter(text, elementId, speed = 15, callback = null) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = '';
+            let i = 0;
+
+            function type() {
+                if (i < text.length) {
+                    element.innerHTML += text.charAt(i);
+                    if (i % 3 === 0) playSound('type');
+                    i++;
+                    setTimeout(type, speed);
+                } else if (callback) {
+                    callback();
+                }
+            }
+            type();
+        }
+
+        /* === DYNAMIC RANDOM EVENTS DATABASE === */
+        const EVENTS = [
+            {
+                id: 'radio_signal',
+                title: 'НЕОПОЗНАННЫЙ РАДИОСИГНАЛ',
+                alert: 'ПРЕДУПРЕЖДЕНИЕ',
+                text: 'Связной модуль поймал зашифрованный сигнал. Если в группе есть SEO-специалист или Юрист, шанс расшифровать его и извлечь пользу значительно выше.',
+                choices: [
+                    {
+                        text: 'Включить усилитель и попытаться ответить (-10% Топлива)',
+                        action: () => {
+                            if (gameState.resources.energy >= 10) {
+                                gameState.resources.energy -= 10;
+                                const hasSEO = gameState.survivors.some(s => s.role === 'SEO-специалист' || s.role === 'Юрист');
+                                if (hasSEO) {
+                                    gameState.resources.morale += 20;
+                                    gameState.inventory.spareParts += 2;
+                                    return 'Благодаря навыкам специалиста удалось точно настроить антенну и перехватить координаты склада торговцев (+20 Морали, +2 Запчасти)!';
+                                } else {
+                                    gameState.resources.morale += 10;
+                                    return 'Вы вышли на связь с выжившими. Сигнал был слабым, но удалось обменяться добрыми вестями (+10 Морали).';
+                                }
+                            } else {
+                                return 'Недостаточно топлива для запуска мощной радиостанции.';
+                            }
+                        }
+                    },
+                    {
+                        text: 'Игнорировать радиосигнал',
+                        action: () => {
+                            return 'Вы решили не рисковать и сохранили радиомолчание.';
+                        }
+                    }
+                ]
+            },
+            {
+                id: 'water_filter_break',
+                title: 'ПОЛОМКА БИОФИЛЬТРА',
+                alert: 'АВАРИЯ',
+                text: 'Датчики показывают загрязнение системы подачи воды. Если не принять мер, вода станет непригодной для питья.',
+                choices: [
+                    {
+                        text: 'Использовать запчасти для ремонта (-1 Запчасть)',
+                        action: () => {
+                            if (gameState.inventory.spareParts > 0) {
+                                gameState.inventory.spareParts--;
+                                gameState.resources.filters = Math.min(100, gameState.resources.filters + 15);
+                                return 'Поломка успешно устранена! Система фильтрации снова работает на полную мощность.';
+                            } else {
+                                const hasBio = gameState.survivors.some(s => s.role === 'Биотехнолог' || s.role === 'Автомеханик');
+                                if (hasBio) {
+                                    gameState.resources.filters = Math.min(100, gameState.resources.filters + 10);
+                                    return 'Запчастей не было, но Биотехнолог/Автомеханик собрали фильтр из подручных средств!';
+                                } else {
+                                    gameState.resources.water = Math.max(0, gameState.resources.water - 4);
+                                    return 'Без запчастей часть воды была испорчена (-4 Воды)!';
+                                }
+                            }
+                        }
+                    },
+                    {
+                        text: 'Продуть систему вручную (-15% Энергии)',
+                        action: () => {
+                            gameState.resources.energy = Math.max(0, gameState.resources.energy - 15);
+                            return 'Продувка очистила трубы, но затратила много энергии.';
+                        }
+                    }
+                ]
+            },
+            {
+                id: 'conflict',
+                title: 'ПСИХОЛОГИЧЕСКИЙ КРИЗИС',
+                alert: 'ТРЕВОГА',
+                text: 'Изоляция берет свое: между выжившими вспыхнула ссора из-за распределения пищевых рационов.',
+                choices: [
+                    {
+                        text: 'Увеличить порции на один день (-3 Еды)',
+                        action: () => {
+                            if (gameState.resources.food >= 3) {
+                                gameState.resources.food -= 3;
+                                gameState.resources.morale += 15;
+                                return 'Вкусный ужин успокоил людей (+15 Морали).';
+                            } else {
+                                return 'Недостаточно еды для щедрого ужина!';
+                            }
+                        }
+                    },
+                    {
+                        text: 'Провести переговоры (Врач, Учитель, Дефектолог, Адвокат, Бариста)',
+                        action: () => {
+                            const mediator = gameState.survivors.some(s => 
+                                ['Учитель', 'Дефектолог', 'Адвокат', 'Бариста', 'Врач'].includes(s.role)
+                            );
+                            if (mediator) {
+                                gameState.resources.morale += 10;
+                                return 'Профессиональные навыки урегулирования споров помогли уладить конфликт без трат ресурсов!';
+                            } else {
+                                gameState.resources.morale -= 10;
+                                return 'Компромисс найти не удалось. Напряжение в группе выросло (-10 Морали).';
+                            }
+                        }
+                    }
+                ]
+            }
+        ];
+
+        /* === DAILY EVENT TRIGGER === */
+        function triggerDailyEvent() {
+            const randomEvt = EVENTS[Math.floor(Math.random() * EVENTS.length)];
+            gameState.currentEvent = randomEvt;
+
+            const alertBadge = document.getElementById('eventAlertLevel');
+            alertBadge.innerText = `СТАТУС: ${randomEvt.alert}`;
+            if (randomEvt.alert === 'АВАРИЯ' || randomEvt.alert === 'ОПАСНОСТЬ') {
+                alertBadge.className = 'text-[10px] px-2 py-0.5 border border-red-500 text-red-400 rounded animate-pulse';
+                playSound('alarm');
+            } else {
+                alertBadge.className = 'text-[10px] px-2 py-0.5 border border-amber-500 text-amber-400 rounded';
+            }
+
+            typeWriter(`[ДЕНЬ ${gameState.day}] :: ${randomEvt.title}\n\n${randomEvt.text}`, 'typewriterText', 15, () => {
+                renderChoices(randomEvt.choices);
+            });
+        }
+
+        function renderChoices(choices) {
+            const container = document.getElementById('eventChoicesContainer');
+            container.innerHTML = '';
+
+            choices.forEach((choice) => {
+                const btn = document.createElement('button');
+                btn.className = 'term-btn p-2.5 text-xs text-left w-full rounded flex items-center justify-between';
+                btn.innerHTML = `<span>> ${choice.text}</span> <i data-lucide="chevron-right" class="w-4 h-4"></i>`;
+                btn.onclick = () => handleChoice(choice);
+                container.appendChild(btn);
+            });
+            lucide.createIcons();
+        }
+
+        function handleChoice(choice) {
+            playSound('click');
+            const resultMsg = choice.action();
+
+            const container = document.getElementById('eventChoicesContainer');
+            container.innerHTML = '';
+
+            typeWriter(resultMsg, 'typewriterText', 15);
+            updateUI();
+            checkEndConditions();
+        }
+
+        /* === SURVIVOR TASK ASSIGNMENTS === */
+        function setTask(survivorId, taskName) {
+            playSound('click');
+            const survivor = gameState.survivors.find(s => s.id === survivorId);
+            if (survivor) {
+                survivor.task = taskName;
+            }
+            updateUI();
+        }
+
+        /* === ADVANCE DAY SYSTEM === */
+        function advanceDay() {
+            playSound('click');
+            gameState.day++;
+
+            // Пассивные бонусы от профессий в группе
+            const hasAnalyst = gameState.survivors.some(s => s.role === 'Бизнес-аналитик' || s.role === 'Повар');
+            const foodCons = hasAnalyst ? Math.max(1, gameState.survivors.length - 1) : gameState.survivors.length;
+
+            gameState.resources.food = Math.max(0, gameState.resources.food - foodCons);
+            gameState.resources.water = Math.max(0, gameState.resources.water - gameState.survivors.length);
+
+            // Базовый износ
+            gameState.resources.filters = Math.max(0, gameState.resources.filters - 5);
+            gameState.resources.energy = Math.max(0, gameState.resources.energy - 4);
+
+            // Выполнение задач
+            gameState.survivors.forEach(s => {
+                if (s.task === 'repair') {
+                    const repairBonus = (s.role === 'Автомеханик' || s.role === 'Инженер') ? 20 : 10;
+                    gameState.resources.filters = Math.min(100, gameState.resources.filters + repairBonus);
+                    gameState.resources.energy = Math.min(100, gameState.resources.energy + 8);
+                } else if (s.task === 'rest') {
+                    s.health = Math.min(100, s.health + 15);
+                    s.sanity = Math.min(100, s.sanity + 15);
+                } else if (s.task === 'guard') {
+                    const guardBonus = (s.role === 'Полицейский' || s.role === 'Тренер') ? 10 : 5;
+                    gameState.resources.morale = Math.min(100, gameState.resources.morale + guardBonus);
+                }
+            });
+
+            // Расчет результатов вылазки
+            if (gameState.isExpeditionActive && gameState.expeditionScoutId) {
+                const scout = gameState.survivors.find(s => s.id === gameState.expeditionScoutId);
+                if (scout) {
+                    const bonusLoot = (scout.role === 'Тренер' || scout.role === 'Ученый') ? 2 : 0;
+                    const foundFood = Math.floor(Math.random() * 4) + 1 + bonusLoot;
+                    const foundWater = Math.floor(Math.random() * 4) + 1;
+                    const foundParts = Math.random() > 0.4 ? 1 : 0;
+
+                    gameState.resources.food += foundFood;
+                    gameState.resources.water += foundWater;
+                    gameState.inventory.spareParts += foundParts;
+
+                    scout.health = Math.max(10, scout.health - Math.floor(Math.random() * 15));
+                    scout.task = 'none';
+                }
+                gameState.isExpeditionActive = false;
+                gameState.expeditionScoutId = null;
+            }
+
+            // Штраф за голод
+            if (gameState.resources.food === 0 || gameState.resources.water === 0) {
+                gameState.resources.morale -= 15;
+                gameState.survivors.forEach(s => s.health -= 15);
+            }
+
+            updateUI();
+
+            if (!checkEndConditions()) {
+                triggerDailyEvent();
+            }
+
+            saveGame();
+        }
+
+        /* === WASTELAND EXPEDITIONS === */
+        function startExpedition() {
+            playSound('click');
+            const scoutId = parseFloat(document.getElementById('expeditionScout').value);
+            if (!scoutId) return;
+
+            const scout = gameState.survivors.find(s => s.id === scoutId);
+            if (!scout) return;
+
+            gameState.isExpeditionActive = true;
+            gameState.expeditionScoutId = scoutId;
+            scout.task = 'expedition';
+
+            alert(`Разведчик ${scout.name} (${scout.role}) отправлен в пустошь! Результаты прибудут завтра.`);
+            updateUI();
+        }
+
+        /* === UI UPDATE ENGINE === */
+        function updateUI() {
+            document.getElementById('statDay').innerText = gameState.day;
+
+            document.getElementById('statFoodVal').innerText = `${gameState.resources.food}/25`;
+            document.getElementById('barFood').style.width = `${Math.min(100, (gameState.resources.food / 25) * 100)}%`;
+
+            document.getElementById('statWaterVal').innerText = `${gameState.resources.water}/25`;
+            document.getElementById('barWater').style.width = `${Math.min(100, (gameState.resources.water / 25) * 100)}%`;
+
+            document.getElementById('statEnergyVal').innerText = `${gameState.resources.energy}%`;
+            document.getElementById('barEnergy').style.width = `${gameState.resources.energy}%`;
+
+            document.getElementById('statFilterVal').innerText = `${gameState.resources.filters}%`;
+            document.getElementById('barFilters').style.width = `${gameState.resources.filters}%`;
+
+            document.getElementById('statMoraleVal').innerText = `${gameState.resources.morale}%`;
+            document.getElementById('barMorale').style.width = `${gameState.resources.morale}%`;
+
+            const survivorsList = document.getElementById('survivorsList');
+            const scoutSelect = document.getElementById('expeditionScout');
+
+            survivorsList.innerHTML = '';
+            scoutSelect.innerHTML = '';
+
+            gameState.survivors.forEach(s => {
+                const card = document.createElement('div');
+                card.className = 'border border-green-900 bg-black/40 p-2 rounded text-xs space-y-1.5';
+                card.innerHTML = `
+                    <div class="flex justify-between items-center font-bold text-green-300">
+                        <span>${s.name} (${s.role})</span>
+                        <span class="${s.health < 40 ? 'text-red-400' : 'text-green-400'}">ЗДОРАВЛИВАЕТ: ${s.health}%</span>
+                    </div>
+                    <div class="text-[11px] text-green-600 flex justify-between">
+                        <span>Навык: ${s.skill}</span>
+                        <span>Предмет: ${s.item}</span>
+                    </div>
+                    <div class="flex gap-1 pt-1 border-t border-green-900/60">
+                        <button onclick="setTask(${s.id}, 'repair')" class="term-btn text-[10px] px-2 py-0.5 flex-1 ${s.task === 'repair' ? 'bg-green-500 text-black font-bold' : ''}">Ремонт</button>
+                        <button onclick="setTask(${s.id}, 'rest')" class="term-btn text-[10px] px-2 py-0.5 flex-1 ${s.task === 'rest' ? 'bg-green-500 text-black font-bold' : ''}">Отдых</button>
+                        <button onclick="setTask(${s.id}, 'guard')" class="term-btn text-[10px] px-2 py-0.5 flex-1 ${s.task === 'guard' ? 'bg-green-500 text-black font-bold' : ''}">Охрана</button>
+                    </div>
+                `;
+                survivorsList.appendChild(card);
+
+                if (s.task !== 'expedition') {
+                    const opt = document.createElement('option');
+                    opt.value = s.id;
+                    opt.innerText = `${s.name} (${s.role}) - Здоровье ${s.health}%`;
+                    scoutSelect.appendChild(opt);
+                }
+            });
+
+            const invGrid = document.getElementById('inventoryGrid');
+            invGrid.innerHTML = `
+                <div class="border border-green-900 p-2 rounded">
+                    <span class="text-green-600 block">Аптечки:</span>
+                    <span class="text-sm font-bold text-green-300">${gameState.inventory.medkit} шт.</span>
+                </div>
+                <div class="border border-green-900 p-2 rounded">
+                    <span class="text-green-600 block">Запчасти:</span>
+                    <span class="text-sm font-bold text-green-300">${gameState.inventory.spareParts} шт.</span>
+                </div>
+                <div class="border border-green-900 p-2 rounded">
+                    <span class="text-green-600 block">Патроны:</span>
+                    <span class="text-sm font-bold text-green-300">${gameState.inventory.ammo} шт.</span>
+                </div>
+                <div class="border border-green-900 p-2 rounded">
+                    <span class="text-green-600 block">Запасные фильтры:</span>
+                    <span class="text-sm font-bold text-green-300">${gameState.inventory.airFilterItem} шт.</span>
+                </div>
+            `;
+
+            lucide.createIcons();
+        }
+
+        /* === TAB NAVIGATION === */
+        function switchTab(tabName) {
+            playSound('click');
+            ['survivors', 'inventory', 'expedition'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+                document.getElementById(`tabBtn-${t}`).className = 'px-3 py-1.5 text-green-600 hover:text-green-400 flex-1 text-center';
+            });
+
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+            document.getElementById(`tabBtn-${tabName}`).className = 'px-3 py-1.5 border-b-2 border-green-400 text-green-300 font-bold flex-1 text-center';
+        }
+
+        /* === WIN / LOSE CONDITIONS === */
+        function checkEndConditions() {
+            const allDead = gameState.survivors.every(s => s.health <= 0);
+            
+            if (allDead || gameState.resources.filters <= 0) {
+                showEndScreen(
+                    false, 
+                    'СИГНАЛ ПОТЕРЯН // ВСЕ ВЫЖИВШИЕ ПОГИБЛИ', 
+                    'Воздушные фильтры вышли из строя или закончились жизненные показатели жителей. Бункер стал гробницей.'
+                );
+                return true;
+            }
+
+            if (gameState.day >= 20) {
+                showEndScreen(
+                    true, 
+                    'ЭВАКУАЦИЯ УСПЕШНА // ВЫЖИВАНИЕ ПОДТВЕРЖДЕНО', 
+                    'На 20-й день с вами связался бронированный кортеж спасателей. Все выжившие эвакуированы из зараженной зоны!'
+                );
+                return true;
+            }
+
+            return false;
+        }
+
+        function showEndScreen(isWin, title, desc) {
+            playSound('alarm');
+            const screen = document.getElementById('endGameScreen');
+            const endTitle = document.getElementById('endTitle');
+            const endIcon = document.getElementById('endIcon');
+            const endDesc = document.getElementById('endDescription');
+            document.getElementById('endDaysCount').innerText = gameState.day;
+
+            if (isWin) {
+                endTitle.innerText = title;
+                endTitle.className = 'text-3xl font-vt323 font-bold text-green-400 crt-glow';
+                endIcon.setAttribute('data-lucide', 'award');
+                endIcon.className = 'w-16 h-16 text-green-400 animate-pulse';
+            } else {
+                endTitle.innerText = title;
+                endTitle.className = 'text-3xl font-vt323 font-bold text-red-500 red-glow';
+                endIcon.setAttribute('data-lucide', 'skull');
+                endIcon.className = 'w-16 h-16 text-red-500 animate-bounce';
+            }
+
+            endDesc.innerText = desc;
+            screen.classList.remove('hidden');
+            lucide.createIcons();
+            localStorage.removeItem('bunker_game_save');
+        }
+
+        /* === LOCAL STORAGE SAVE & LOAD === */
+        function saveGame() {
+            try {
+                localStorage.setItem('bunker_game_save', JSON.stringify(gameState));
+                const saveTag = document.getElementById('saveStatus');
+                saveTag.innerText = 'АВТОСОХРАНЕНИЕ: УСПЕШНО';
+                setTimeout(() => { saveTag.innerText = 'АВТОСОХРАНЕНИЕ: АКТИВНО'; }, 2000);
+            } catch (e) {
+                console.error("Save error", e);
+            }
+        }
+
+        function loadGame() {
+            const saved = localStorage.getItem('bunker_game_save');
+            if (saved) {
+                try {
+                    gameState = JSON.parse(saved);
+                    document.getElementById('startScreen').classList.add('hidden');
+                    document.getElementById('gameScreen').classList.remove('hidden');
+                    updateUI();
+                    triggerDailyEvent();
+                } catch(e) {
+                    generateRandomCharacter();
+                }
+            } else {
+                generateRandomCharacter();
+            }
+        }
+
+        function resetGamePrompt() {
+            if (confirm('Перезапустить игру и сбросить весь прогресс?')) {
+                resetGame();
+            }
+        }
+
+        function resetGame() {
+            localStorage.removeItem('bunker_game_save');
+            location.reload();
+        }
+
+        window.onload = function() {
+            lucide.createIcons();
+            loadGame();
+        };
+    </script>
+</body>
+</html>
